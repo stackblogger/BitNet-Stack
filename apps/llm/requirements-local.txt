@@ -1,4 +1,2 @@
 flask
-flask-socketio
 requests
-eventlet

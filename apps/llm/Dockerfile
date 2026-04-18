@@ -1,43 +1,61 @@
-FROM python:3.9-alpine
+FROM python:3.11-slim
 
-# Install necessary dependencies and tools
-RUN apk add --no-cache build-base cmake clang git && \
-    rm -rf /var/cache/apk/*
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    OMP_NUM_THREADS=4 \
+    MODEL_PATH=/models/ggml-model-i2_s.gguf \
+    BITNET_DIR=/app/BitNet
 
-# Clone the BitNet repository without history
-RUN git clone --recursive --depth 1 https://github.com/microsoft/BitNet.git && \
-    rm -rf BitNet/.git
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git \
+    curl \
+    ca-certificates \
+    build-essential \
+    cmake \
+    && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /BitNet
+WORKDIR /app
 
-# Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install flask huggingface_hub
 
-# Copy the local requirements.txt for additional dependencies
-COPY requirements-local.txt .
+# The reason to checkout 404980e is listed here . It is an open issue on the BitNet repository.
+# https://github.com/microsoft/BitNet/issues/470
+RUN git clone https://github.com/microsoft/BitNet.git && \
+    cd BitNet && \
+    git checkout 404980e && \
+    git submodule update --init --recursive --force && \
+    rm -rf .git
 
-# Install additional dependencies from the local requirements file
-RUN pip install --no-cache-dir -r requirements-local.txt
+WORKDIR /app/BitNet
 
-# Run the code generation for Llama3-8B model
-RUN python3 utils/codegen_tl2.py --model Llama3-8B-1.58-100B-tokens --BM 256,128,256,128 --BK 96,96,96,96 --bm 32,32,32,32
+RUN pip install -r requirements.txt
 
-# Build the model using cmake with specified compilers
-RUN cmake -B build -DBITNET_X86_TL2=ON -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++
+RUN ARCH="$(uname -m)" && set -eux && \
+    if [ "$ARCH" = "x86_64" ]; then \
+    python3 utils/codegen_tl2.py --model bitnet_b1_58-3B \
+    --BM 160,320,320 --BK 96,96,96 --bm 32,32,32; \
+    elif [ "$ARCH" = "aarch64" ]; then \
+    python3 utils/codegen_tl1.py --model bitnet_b1_58-3B \
+    --BM 160,320,320 --BK 64,128,64 --bm 32,64,32; \
+    else \
+    echo "unsupported architecture: $ARCH" >&2; exit 1; \
+    fi
 
-RUN cmake --build build --config Release
+RUN cmake -B build -DCMAKE_BUILD_TYPE=Release && \
+    cmake --build build -j$(nproc)
 
-# Download the Llama model from HuggingFace
-ADD https://huggingface.co/brunopio/Llama3-8B-1.58-100B-tokens-GGUF/resolve/main/Llama3-8B-1.58-100B-tokens-TQ2_0.gguf .
+WORKDIR /app
 
-# Verify the integrity of the model file
-RUN echo "2565559c82a1d03ecd1101f536c5e99418d07e55a88bd5e391ed734f6b3989ac Llama3-8B-1.58-100B-tokens-TQ2_0.gguf" | sha256sum -c
+RUN mkdir -p /models && \
+    hf download microsoft/BitNet-b1.58-2B-4T-gguf \
+    ggml-model-i2_s.gguf \
+    --local-dir /models
 
-# Expose port for communication with the Node.js app
+COPY run_model.py .
+COPY static ./static
+
 EXPOSE 5000
 
-# Run a Python script that handles queries from the Node.js app using socket.io
-COPY run_model.py .
-
-# Run the model in inference mode, listening for queries
-CMD ["python3", "run_model.py"]
+CMD ["python", "run_model.py"]
