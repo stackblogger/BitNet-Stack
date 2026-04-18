@@ -24,13 +24,18 @@ CNV_IDLE_SEC = float(os.getenv("CNV_IDLE_SEC", "0.45"))
 CNV_MAX_SEC = float(os.getenv("CNV_MAX_SEC", "120"))
 CNV_READ_CHUNK = int(os.getenv("CNV_READ_CHUNK", "256"))
 CNV_STARTUP_DRAIN_MAX = float(os.getenv("CNV_STARTUP_DRAIN_MAX", "4"))
-CNV_STARTUP_QUIET = float(os.getenv("CNV_STARTUP_QUIET", "0.4"))
+CNV_STARTUP_QUIET_COLD = float(os.getenv("CNV_STARTUP_QUIET", "0.85"))
+CNV_STARTUP_QUIET_WARM = float(os.getenv("CNV_STARTUP_QUIET_WARM", "0.42"))
+CNV_STARTUP_STRAGGLER_COLD = float(os.getenv("CNV_STARTUP_STRAGGLER_SEC", "0.55"))
+CNV_STARTUP_STRAGGLER_WARM = float(os.getenv("CNV_STARTUP_STRAGGLER_WARM", "0.2"))
 THREADS = os.getenv("THREADS", "4")
 CTX_SIZE = os.getenv("CTX_SIZE", "2048")
 TEMP = os.getenv("TEMP", "0.8")
 
 cnv_sessions: dict = {}
 cnv_global_lock = threading.Lock()
+_startup_warm_lock = threading.Lock()
+_cnv_process_startup_warmed = False
 
 
 def sse_chunk(obj):
@@ -94,28 +99,60 @@ def _stdout_reader(proc: subprocess.Popen, q: queue.Queue) -> None:
         q.put(None)
 
 
-def drain_cnv_startup_queue(q: queue.Queue) -> None:
-    end = time.monotonic() + CNV_STARTUP_DRAIN_MAX
-    saw_line = False
-    quiet_at = None
-    no_line_deadline = time.monotonic() + 0.5
-    while time.monotonic() < end:
+def _startup_drain_stragglers(q: queue.Queue, budget_sec: float) -> None:
+    deadline = time.monotonic() + budget_sec
+    while time.monotonic() < deadline:
+        drained = False
         try:
-            _ = q.get(timeout=0.12)
-            if _ is None:
-                return
-            saw_line = True
-            quiet_at = None
-        except queue.Empty:
-            if not saw_line:
-                if time.monotonic() >= no_line_deadline:
+            while True:
+                x = q.get_nowait()
+                if x is None:
                     return
-                continue
-            now = time.monotonic()
-            if quiet_at is None:
-                quiet_at = now
-            elif now - quiet_at >= CNV_STARTUP_QUIET:
-                return
+                drained = True
+        except queue.Empty:
+            pass
+        if not drained:
+            time.sleep(0.07)
+
+
+def drain_cnv_startup_queue(q: queue.Queue) -> None:
+    with _startup_warm_lock:
+        warmed = _cnv_process_startup_warmed
+    quiet_need = CNV_STARTUP_QUIET_WARM if warmed else CNV_STARTUP_QUIET_COLD
+    straggler_budget = CNV_STARTUP_STRAGGLER_WARM if warmed else CNV_STARTUP_STRAGGLER_COLD
+    try:
+        end = time.monotonic() + CNV_STARTUP_DRAIN_MAX
+        saw_any = False
+        quiet_at = None
+        while time.monotonic() < end:
+            try:
+                _ = q.get(timeout=0.12)
+                if _ is None:
+                    return
+                saw_any = True
+                quiet_at = None
+            except queue.Empty:
+                if not saw_any:
+                    continue
+                now = time.monotonic()
+                if quiet_at is None:
+                    quiet_at = now
+                elif now - quiet_at >= quiet_need:
+                    got_more = False
+                    try:
+                        while True:
+                            x = q.get_nowait()
+                            if x is None:
+                                return
+                            got_more = True
+                    except queue.Empty:
+                        pass
+                    if got_more:
+                        quiet_at = None
+                        continue
+                    return
+    finally:
+        _startup_drain_stragglers(q, straggler_budget)
 
 
 def _terminate_session(data: dict) -> None:
@@ -194,6 +231,7 @@ def stop():
 
 @app.post("/cnv/init")
 def cnv_init():
+    global _cnv_process_startup_warmed
     body = request.get_json(silent=True) or {}
     session_id = body.get("session_id") or body.get("sessionId")
     system = (body.get("system") or body.get("system_prompt") or DEFAULT_SYSTEM).strip()
@@ -227,6 +265,9 @@ def cnv_init():
             "lock": threading.Lock(),
         }
     drain_cnv_startup_queue(q)
+    if proc.poll() is None:
+        with _startup_warm_lock:
+            _cnv_process_startup_warmed = True
     return {"ok": True}
 
 
