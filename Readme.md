@@ -22,6 +22,8 @@ Run a small BitNet model on local machine with one Docker command, and chat in b
 
 ![bitnet-stack](docs/assets/conversational-chat.gif)
 
+Checkout the [documentation](https://opensource.stackblogger.com/BitNet-Stack/) for more working examples.
+
 ## Prerequisites
 
 - [Docker](https://docs.docker.com/get-docker/) (with Docker Compose)
