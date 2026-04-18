@@ -8,15 +8,15 @@
 
 Run a small BitNet model on local machine with one Docker command, and chat in browser.
 
-## What you get
+## Features
 
-- **One Docker Compose command** — Build and start the LLM server with a single command. The image pulls the **official small BitNet GGUF** from Hugging Face (`BitNet-b1.58-2B-4T-gguf`, `ggml-model-i2_s.gguf`) so you do not manage weights by hand.
-- **Web interface** — Open the app in your browser, start a chat, and talk to the model from a simple page.
-- **Chat history in the browser** — Conversations are stored in **local storage** on your device. They stay until you clear them.
-- **Clear all chats** — Use the control in the UI to remove every saved thread and stop model sessions in one go.
-- **Session context** — Each chat keeps a **conversation session** with the model so follow-up messages stay in context until you start a new chat or clear data.
-- **Responsive replies** — Streaming output and a tuned server path so answers show up quickly as they are generated.
-- **Runs anywhere Docker runs** — On a laptop, a desktop, or a small server: clone the repo, run `docker compose`, open the URL. No extra install steps for Node or Python on the host.
+- Build and start the LLM server with a single command.
+- Web interface to chat with the LLM. Start conversation and put follow-up prompts.
+- Chat history is stored in browser storage. You get all the chats even if you reload the page or comes back later. It stays in storage unless it is cleared manually.
+- A single button to clear all the chats from browser storage.
+- LLM remebers the context so you can make follow-up questions it will answer efficiently.
+- Responses are streamed from server so you word by word written on page from LLM.
+- Runs on any machine with a single docker command.
 
 ## Working example
 
