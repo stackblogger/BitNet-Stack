@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BitNet-Stack — Local BitNet LLM with Docker &amp; browser chat</title>
+  <meta name="description"
+    content="Run a small BitNet GGUF model on local machine with Docker Compose. Chat with LLM in browser with session context and history." />
+  <meta name="robots" content="index, follow" />
+  <meta name="theme-color" content="#e8ecf4" />
+  <link rel="canonical" href="https://opensource.stackblogger.com/BitNet-Stack/" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="BitNet-Stack — Local BitNet LLM with Docker &amp; browser chat" />
+  <meta property="og:description"
+    content="Run a small BitNet GGUF model on local machine with Docker Compose. Chat with LLM in browser with session context and history." />
+  <meta property="og:url" content="https://opensource.stackblogger.com/BitNet-Stack/" />
+  <meta property="og:site_name" content="BitNet-Stack" />
+  <meta property="og:locale" content="en_US" />
+  <meta property="og:image"
+    content="https://raw.githubusercontent.com/stackblogger/BitNet-Stack/main/docs/assets/bitnet-stack.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="BitNet-Stack — Local BitNet LLM with Docker &amp; browser chat" />
+  <meta name="twitter:description"
+    content="Run a small BitNet GGUF model on local machine with Docker Compose. Chat with LLM in browser with session context and history." />
+  <meta name="twitter:image"
+    content="https://raw.githubusercontent.com/stackblogger/BitNet-Stack/main/docs/assets/bitnet-stack.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #e8ecf4;
+      --bg-elevated: #ffffff;
+      --bg-soft: #f4f6fb;
+      --border: rgba(79, 70, 229, 0.12);
+      --text: #1e293b;
+      --muted: #64748b;
+      --accent: #4338ca;
+      --accent-bright: #6366f1;
+      --teal: #0d9488;
+      --shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+      --shadow-lg: 0 20px 50px rgba(67, 56, 202, 0.08);
+      --radius: 14px;
+      --content-max: 1120px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    .skip-link {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .skip-link:focus {
+      position: fixed;
+      width: auto;
+      height: auto;
+      margin: 0;
+      clip: auto;
+      z-index: 9999;
+      left: 1rem;
+      top: 1rem;
+      padding: 0.65rem 1rem;
+      background: var(--bg-elevated);
+      color: var(--accent);
+      font-weight: 600;
+      border-radius: 8px;
+      border: 2px solid var(--accent-bright);
+      box-shadow: var(--shadow-lg);
+      white-space: normal;
+    }
+
+    body {
+      margin: 0;
+      font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+      background: linear-gradient(165deg, #eef2ff 0%, var(--bg) 38%, #e0f2fe 100%);
+      color: var(--text);
+      line-height: 1.7;
+      font-size: clamp(0.9375rem, 2.5vw, 1.0625rem);
+      min-height: 100vh;
+    }
+
+    .wrap {
+      max-width: var(--content-max);
+      margin: 0 auto;
+      padding: 0 clamp(1.25rem, 4vw, 2.5rem);
+    }
+
+    header {
+      padding: clamp(1.75rem, 5vw, 2.75rem) 0 clamp(2rem, 5vw, 3.25rem);
+      text-align: center;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 100%);
+    }
+
+    header h1 {
+      margin: 0 0 0.65rem;
+      font-size: clamp(1.65rem, 5.5vw, 2.85rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: #0f172a;
+      line-height: 1.15;
+      word-wrap: break-word;
+    }
+
+    header h1 span {
+      color: var(--accent);
+    }
+
+    .header-top {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .header-top h1 {
+      margin: 0;
+    }
+
+    @media (min-width: 560px) {
+      .header-top {
+        flex-direction: row;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        gap: 1rem 1.25rem;
+      }
+    }
+
+    .github-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      min-height: 44px;
+      padding: 0.5rem 1.1rem 0.5rem 0.95rem;
+      font-size: clamp(0.875rem, 2.5vw, 0.9375rem);
+      font-weight: 600;
+      color: #334155;
+      background: var(--bg-elevated);
+      border: 1px solid #e2e8f0;
+      border-radius: 999px;
+      box-shadow: var(--shadow);
+      transition: border-color 0.15s, box-shadow 0.15s, color 0.15s;
+      max-width: 100%;
+    }
+
+    .github-btn:hover {
+      color: #0f172a;
+      border-color: #c7d2fe;
+      box-shadow: 0 6px 20px rgba(15, 23, 42, 0.08);
+      text-decoration: none;
+    }
+
+    .github-btn svg {
+      flex-shrink: 0;
+      opacity: 0.85;
+    }
+
+    header .lead {
+      margin: 0 auto 0.15rem;
+      max-width: 42rem;
+      color: var(--muted);
+      font-size: clamp(1rem, 3vw, 1.125rem);
+      font-weight: 500;
+      padding: 0 0.25rem;
+    }
+
+    .hero-img {
+      margin: 2.25rem auto 0;
+      max-width: min(720px, 100%);
+      width: 100%;
+      height: auto;
+      display: block;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(15, 23, 42, 0.04);
+    }
+
+    main {
+      max-width: var(--content-max);
+      margin: 0 auto;
+      padding: clamp(1.75rem, 4vw, 2.75rem) clamp(1rem, 4vw, 2.5rem) clamp(2.5rem, 6vw, 4rem);
+    }
+
+    h2 {
+      margin: 2.75rem 0 1rem;
+      font-size: clamp(1.22rem, 3.5vw, 1.45rem);
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      line-height: 1.25;
+    }
+
+    h2:first-of-type {
+      margin-top: 0;
+    }
+
+    h3 {
+      margin: 1.85rem 0 0.55rem;
+      font-size: clamp(1.02rem, 2.8vw, 1.12rem);
+      font-weight: 600;
+      color: #334155;
+      line-height: 1.3;
+    }
+
+    p {
+      margin: 0 0 1rem;
+      color: #475569;
+    }
+
+    ul {
+      margin: 0 0 1rem;
+      padding-left: 1.35rem;
+      color: #475569;
+    }
+
+    li {
+      margin-bottom: 0.4rem;
+    }
+
+    .features {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.1rem;
+      margin: 1.75rem 0;
+    }
+
+    @media (min-width: 720px) {
+      .features {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .feature {
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: clamp(1rem, 3vw, 1.2rem) clamp(1rem, 3vw, 1.35rem);
+      box-shadow: var(--shadow);
+      border-top: 3px solid var(--accent-bright);
+    }
+
+    .feature strong {
+      display: block;
+      color: var(--accent);
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+
+    .feature p {
+      margin: 0;
+      font-size: 0.98rem;
+      color: #475569;
+    }
+
+    pre,
+    code {
+      font-family: "IBM Plex Mono", ui-monospace, monospace;
+      font-size: clamp(0.78rem, 2.2vw, 0.9rem);
+    }
+
+    code {
+      background: rgba(99, 102, 241, 0.08);
+      color: #4338ca;
+      padding: 0.15em 0.45em;
+      border-radius: 6px;
+    }
+
+    pre {
+      margin: 1rem 0;
+      padding: clamp(0.85rem, 2.5vw, 1.15rem) clamp(0.85rem, 2.5vw, 1.35rem);
+      background: #f1f5f9;
+      border: 1px solid #e2e8f0;
+      border-radius: 10px;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      max-width: 100%;
+      color: #0f172a;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    pre code {
+      background: none;
+      padding: 0;
+      color: inherit;
+    }
+
+    .gif-slot {
+      margin: 1.35rem 0;
+      padding: clamp(0.75rem, 3vw, 1.15rem);
+      background: var(--bg-soft);
+      border: 1px solid #e2e8f0;
+      border-radius: var(--radius);
+      text-align: center;
+      box-shadow: var(--shadow);
+      max-width: 100%;
+    }
+
+    .gif-frame {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: clamp(160px, 35vw, 220px);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .gif-slot.gif-loaded .gif-frame {
+      min-height: 0;
+    }
+
+    .gif-skeleton {
+      grid-area: 1 / 1;
+      width: 100%;
+      min-height: clamp(160px, 35vw, 220px);
+      border-radius: 10px;
+      background: linear-gradient(110deg, #e2e8f0 0%, #f1f5f9 40%, #e8ecf4 80%, #e2e8f0 100%);
+      background-size: 200% 100%;
+      animation: gif-shimmer 1.35s ease-in-out infinite;
+    }
+
+    @keyframes gif-shimmer {
+      0% {
+        background-position: 100% 0;
+      }
+
+      100% {
+        background-position: -100% 0;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .gif-skeleton {
+        animation: none;
+        background-position: 0 0;
+      }
+
+      .gif-media {
+        transition: none;
+      }
+    }
+
+    .gif-slot.gif-loaded .gif-skeleton,
+    .gif-slot.gif-error .gif-skeleton {
+      display: none;
+    }
+
+    .gif-media {
+      grid-area: 1 / 1;
+      max-width: 100%;
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      vertical-align: middle;
+      border: 1px solid #e2e8f0;
+      opacity: 0;
+      transition: opacity 0.35s ease;
+    }
+
+    .gif-slot.gif-loaded .gif-media {
+      opacity: 1;
+    }
+
+    .gif-slot.gif-error .gif-media {
+      display: none;
+    }
+
+    .gif-missing {
+      display: none;
+      margin: 0;
+      padding: 2rem 1rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .gif-slot.gif-error .gif-missing {
+      display: block;
+    }
+
+    footer {
+      text-align: center;
+      padding: 2rem 1rem 2.5rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+      border-top: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    a {
+      color: var(--teal);
+      font-weight: 600;
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+      color: #0f766e;
+    }
+
+    a.github-btn,
+    a.github-btn:hover {
+      text-decoration: none;
+    }
+
+    @media (max-width: 480px) {
+      .header-top .github-btn {
+        width: 100%;
+        max-width: min(100%, 22rem);
+      }
+    }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "WebPage",
+        "@id": "https://opensource.stackblogger.com/BitNet-Stack/#webpage",
+        "url": "https://opensource.stackblogger.com/BitNet-Stack/",
+        "name": "BitNet-Stack — Local BitNet LLM with Docker and browser chat",
+        "description": "Run a small BitNet GGUF model on local machine with Docker Compose. Chat with LLM in browser with session context and history.",
+        "isPartOf": { "@type": "WebSite", "name": "BitNet-Stack", "url": "https://opensource.stackblogger.com/BitNet-Stack/" },
+        "inLanguage": "en"
+      }
+    ]
+  }
+  </script>
+</head>
+
+<body>
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  <header>
+    <div class="wrap">
+      <div class="header-top">
+        <h1>BitNet-<span>Stack</span></h1>
+        <a class="github-btn" href="https://github.com/stackblogger/BitNet-Stack" rel="noopener noreferrer">
+          <svg width="18" height="18" viewBox="0 0 98 96" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path fill="currentColor" fill-rule="evenodd" clip-rule="evenodd"
+              d="M48.854 0C21.839 0 0 22 0 49.217c0 21.756 13.993 40.172 33.405 46.69 2.427.49 3.316-1.059 3.316-2.362 0-1.141-.08-5.052-.08-9.127-13.59 2.934-16.42-5.867-16.42-5.867-2.184-5.704-5.42-7.17-5.42-7.17-4.448-3.015.324-3.015.324-3.015 4.934.326 7.523 5.052 7.523 5.052 4.367 7.496 11.404 5.378 14.235 4.074.404-3.178 1.699-5.378 3.074-6.6-10.839-1.195-22.23-5.378-22.23-24.283 0-5.378 1.94-9.778 5.014-13.2-.485-1.222-2.184-6.275.486-13.038 0 0 4.125-1.304 13.426 5.052a46.97 46.97 0 0 1 12.214-1.63c4.125 0 8.33.571 12.213 1.63 9.302-6.356 13.427-5.052 13.427-5.052 2.67 6.763.97 11.816.485 13.038 3.155 3.422 5.015 7.822 5.015 13.2 0 18.905-11.404 23.06-22.324 24.283 1.78 1.548 3.316 4.481 3.316 9.126 0 6.6-.08 11.897-.08 13.526 0 1.304.89 2.853 3.316 2.364 19.412-6.52 33.405-24.935 33.405-46.691C97.707 22 75.788 0 48.854 0z" />
+          </svg>
+          View on GitHub
+        </a>
+      </div>
+      <p class="lead">Run a small BitNet model on your machine with Docker. Chat in the browser with a simple web app.
+      </p>
+      <img class="hero-img" src="assets/bitnet-stack.png"
+        alt="BitNet-Stack: Docker runs the BitNet model and web server; the browser shows the chat app." width="720"
+        sizes="(max-width: 720px) 100vw, 720px" fetchpriority="high" />
+    </div>
+  </header>
+  <main id="main-content">
+    <h2>What is BitNet-Stack?</h2>
+    <p>BitNet-Stack is a small stack for running BitNet inference model on local machine. You use Docker so you do not
+      install Python or Node on your computer by hand. The container pulls a ready-made model file, starts a server, and
+      you
+      open a web page to talk to the model. Code and issues live on <a
+        href="https://github.com/stackblogger/BitNet-Stack">GitHub</a>.</p>
+    <p>The model is a compact BitNet GGUF build suited for local use. The server streams answers so you see text appear
+      as it is written, not only after the full reply is done.</p>
+
+    <h2>Main features</h2>
+    <div class="features">
+      <div class="feature">
+        <strong>Conversational chat</strong>
+        <p>You type in a chat box and get answers like a normal chat app. The interface is built for back-and-forth
+          talk, not one-off commands only.</p>
+      </div>
+      <div class="feature">
+        <strong>Remembers context</strong>
+        <p>Each chat thread keeps a session with the model. Your last messages stay in context so follow-up questions
+          make sense without repeating everything.</p>
+      </div>
+      <div class="feature">
+        <strong>Browser-based history of chats</strong>
+        <p>Your conversations are saved in the browser (local storage on your device). When you come back to the same
+          browser, you can see past threads.</p>
+      </div>
+      <div class="feature">
+        <strong>Delete history with one click</strong>
+        <p>A control in the UI clears all saved chats and related sessions so you can wipe data when you want a fresh
+          start.</p>
+      </div>
+    </div>
+    <p>Other useful feature: one <code>docker compose</code> command to build and run, no manual weight downloads on the
+      host, and a layout that works on laptop or small server.</p>
+
+    <h2>How it fits together</h2>
+    <p>Docker runs one service that holds the model and the web server. The static page talks to that service. History
+      and UI state live in your browser; the heavy work runs inside the container.</p>
+
+    <h2>Quick start</h2>
+    <p>You need <a href="https://docs.docker.com/get-docker/">Docker</a> with Compose.</p>
+    <p>Clone the repository and enter the folder:</p>
+    <pre>git clone https://github.com/stackblogger/BitNet-Stack.git
+cd BitNet-Stack</pre>
+    <p>From the project root, start the stack:</p>
+    <pre>docker compose up --build -d</pre>
+    <p>First build can take time while the image pulls the model. Then open the app in your browser (for example
+      <code>http://localhost:5001</code> if you use the default port mapping in <code>docker-compose.yml</code>).
+    </p>
+
+    <h2>Examples</h2>
+    <p>Here are some examples of how you can use BitNet-Stack.</p>
+
+    <h3>Conversational chat</h3>
+    <div class="gif-slot">
+      <div class="gif-frame">
+        <div class="gif-skeleton" aria-hidden="true"></div>
+        <img class="gif-media" src="assets/conversational-chat.gif" alt="Conversational chat demo" loading="lazy"
+          decoding="async" onload="gifLoaded(this)" onerror="gifFailed(this)" />
+      </div>
+      <p class="gif-missing">Add <code>assets/conversational-chat.gif</code></p>
+    </div>
+
+    <h3>Context across messages</h3>
+    <div class="gif-slot">
+      <div class="gif-frame">
+        <div class="gif-skeleton" aria-hidden="true"></div>
+        <img class="gif-media" src="assets/context-memory.gif" alt="Context memory demo" loading="lazy" decoding="async"
+          onload="gifLoaded(this)" onerror="gifFailed(this)" />
+      </div>
+      <p class="gif-missing">Add <code>assets/context-memory.gif</code></p>
+    </div>
+
+    <h3>Clear all chats</h3>
+    <div class="gif-slot">
+      <div class="gif-frame">
+        <div class="gif-skeleton" aria-hidden="true"></div>
+        <img class="gif-media" src="assets/clear-all-chats.gif" alt="Clear all chats demo" loading="lazy"
+          decoding="async" onload="gifLoaded(this)" onerror="gifFailed(this)" />
+      </div>
+      <p class="gif-missing">Add <code>assets/clear-all-chats.gif</code></p>
+    </div>
+
+    <h3>Generate an article</h3>
+    <p>Ask for an outline or a full short article on a topic. You can follow up to change tone or length.</p>
+    <div class="gif-slot">
+      <div class="gif-frame">
+        <div class="gif-skeleton" aria-hidden="true"></div>
+        <img class="gif-media" src="assets/generate-article.gif" alt="Generate an article demo" loading="lazy"
+          decoding="async" onload="gifLoaded(this)" onerror="gifFailed(this)" />
+      </div>
+      <p class="gif-missing">Add <code>assets/generate-article.gif</code></p>
+    </div>
+
+    <h3>Generate code</h3>
+    <p>Describe what you want in plain language and ask for code in the language you prefer. Review and test anything it
+      suggests before you use it.</p>
+    <div class="gif-slot">
+      <div class="gif-frame">
+        <div class="gif-skeleton" aria-hidden="true"></div>
+        <img class="gif-media" src="assets/generate-code.gif" alt="Generate code demo" loading="lazy" decoding="async"
+          onload="gifLoaded(this)" onerror="gifFailed(this)" />
+      </div>
+      <p class="gif-missing">Add <code>assets/generate-code.gif</code></p>
+    </div>
+
+    <h2>Tips</h2>
+    <ul>
+      <li>Change the host port in <code>docker-compose.yml</code> if port 5001 is already in use.</li>
+    </ul>
+  </main>
+  <footer>BitNet-Stack — MIT License · <a href="https://github.com/stackblogger/BitNet-Stack">Repository</a></footer>
+  <script>
+    function gifLoaded(img) {
+      var slot = img.closest(".gif-slot");
+      if (slot) slot.classList.add("gif-loaded");
+    }
+    function gifFailed(img) {
+      var slot = img.closest(".gif-slot");
+      if (slot) {
+        slot.classList.add("gif-error");
+        img.style.display = "none";
+      }
+    }
+  </script>
+</body>
+
+</html>
