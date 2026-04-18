@@ -5,21 +5,10 @@ services:
       context: ./apps/llm
     container_name: llm
     ports:
-      - "5000:5000"
+      - "5001:5000"
     networks:
       - app-network
     tty: True
-
-  web:
-    build:
-      context: ./apps/web
-    container_name: web
-    ports:
-      - "3000:3000"
-    depends_on:
-      - llm
-    networks:
-      - app-network
 
 networks:
   app-network:

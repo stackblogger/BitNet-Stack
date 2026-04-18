@@ -1,0 +1,1081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BitNet AI Chat</title>
+  <style>
+    :root {
+      --page: #ffffff;
+      --sidebar: #eef2ff;
+      --sidebar-border: rgba(99, 102, 241, 0.14);
+      --user-box: #fafafa;
+      --user-box-border: #ededed;
+      --elevated: #f7f7f7;
+      --border: rgba(0, 0, 0, 0.08);
+      --text: #1a1d26;
+      --muted: #5c6578;
+      --violet: #7c3aed;
+      --violet-dim: #6d28d9;
+      --mint: #059669;
+      --mint-bright: #10b981;
+      --glow: rgba(124, 58, 237, 0.2);
+      --radius-lg: 12px;
+      --radius-md: 10px;
+      --chat-pad: clamp(16px, 3vw, 40px);
+      --chat-col-width: 70%;
+      --font: "Segoe UI", ui-sans-serif, system-ui, -apple-system, Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--page); }
+    body {
+      font-family: var(--font);
+      color: var(--text);
+      background: var(--page);
+      overflow: hidden;
+      display: flex;
+    }
+    body.mode-empty aside { display: none; }
+    body.mode-empty main { max-width: none; }
+    aside {
+      width: 272px;
+      min-width: 240px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      background: linear-gradient(165deg, #f6f7ff 0%, var(--sidebar) 55%, #e8ecfc 100%);
+      border-right: 1px solid var(--sidebar-border);
+    }
+    .side-head {
+      padding: 22px 18px 18px;
+      border-bottom: 1px solid var(--sidebar-border);
+    }
+    .logo {
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      background: linear-gradient(105deg, var(--mint-bright), var(--violet));
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .logo span {
+      font-weight: 500;
+      font-size: 0.75rem;
+      color: var(--muted);
+      -webkit-text-fill-color: var(--muted);
+      background: none;
+    }
+    .btn {
+      font: inherit;
+      cursor: pointer;
+      border: none;
+      border-radius: 12px;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn-new {
+      margin: 14px 14px 10px;
+      padding: 11px 14px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      color: #fff;
+      background: linear-gradient(135deg, var(--violet-dim), var(--violet));
+      box-shadow: 0 4px 20px var(--glow);
+    }
+    .btn-new:hover:not(:disabled) { box-shadow: 0 6px 28px var(--glow); }
+    .history { flex: 1; overflow-y: auto; padding: 6px 10px 16px; }
+    .history-label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--muted);
+      padding: 10px 8px 8px;
+    }
+    .chat-item {
+      width: 100%;
+      text-align: left;
+      padding: 12px 14px;
+      margin-bottom: 6px;
+      border-radius: var(--radius-md);
+      background: transparent;
+      color: var(--text);
+      border: 1px solid transparent;
+      font-size: 0.88rem;
+      line-height: 1.4;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .chat-item:hover {
+      background: rgba(255, 255, 255, 0.55);
+      border-color: rgba(124, 58, 237, 0.12);
+    }
+    .chat-item.active {
+      background: rgba(255, 255, 255, 0.85);
+      border-color: rgba(124, 58, 237, 0.22);
+      box-shadow: 0 1px 0 rgba(255, 255, 255, 0.8) inset;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      position: relative;
+      background: var(--page);
+    }
+    #landing {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+    }
+    #landing.hidden { display: none !important; }
+    .landing-inner {
+      text-align: center;
+      max-width: 420px;
+    }
+    .landing-inner h1 {
+      font-size: clamp(1.75rem, 4vw, 2.25rem);
+      font-weight: 700;
+      letter-spacing: -0.04em;
+      margin-bottom: 10px;
+      background: linear-gradient(120deg, #1a1d26 0%, var(--violet) 45%, var(--mint) 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .landing-inner p {
+      color: var(--muted);
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 28px;
+    }
+    .btn-start {
+      padding: 16px 36px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: linear-gradient(135deg, var(--mint), var(--mint-bright));
+      border-radius: 999px;
+      box-shadow: 0 8px 32px rgba(5, 150, 105, 0.28);
+    }
+    .btn-start:hover:not(:disabled) {
+      box-shadow: 0 12px 40px rgba(5, 150, 105, 0.35);
+    }
+    #chatShell {
+      display: none;
+    }
+    #chatShell.open {
+      display: block;
+    }
+    .thread {
+      overflow: visible;
+      padding: 24px var(--chat-pad) 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: var(--chat-col-width);
+      max-width: 100%;
+      margin: 0 auto;
+      box-sizing: border-box;
+      background: var(--page);
+    }
+    .row {
+      display: flex;
+      width: 100%;
+    }
+    .row.user {
+      justify-content: flex-end;
+    }
+    .row.bot {
+      justify-content: stretch;
+    }
+    .bubble {
+      white-space: pre-wrap;
+      line-height: 1.6;
+      font-size: 0.95rem;
+    }
+    .row.user .bubble {
+      width: fit-content;
+      max-width: min(100%, 32rem);
+      padding: 6px 16px;
+      border-radius: 999px;
+      background: var(--user-box);
+      border: 1px solid var(--user-box-border);
+      color: var(--text);
+    }
+    .row.bot .bubble {
+      width: 100%;
+      max-width: none;
+      padding: 4px 0 8px;
+      border-radius: 0;
+      background: var(--page);
+      border: none;
+      box-shadow: none;
+      color: var(--text);
+    }
+    .row.bot .bubble.md {
+      white-space: normal;
+    }
+    .row.bot .bubble.md p {
+      margin: 0.45em 0;
+    }
+    .row.bot .bubble.md p:first-child {
+      margin-top: 0;
+    }
+    .row.bot .bubble.md p:last-child {
+      margin-bottom: 0;
+    }
+    .row.bot .bubble.md strong {
+      font-weight: 700;
+    }
+    .row.bot .bubble.md em {
+      font-style: italic;
+    }
+    .row.bot .bubble.md ul,
+    .row.bot .bubble.md ol {
+      margin: 0.45em 0 0.45em 1.25em;
+      padding: 0;
+    }
+    .row.bot .bubble.md li {
+      margin: 0.2em 0;
+    }
+    .row.bot .bubble.md code {
+      background: #f4f4f6;
+      padding: 0.12em 0.35em;
+      border-radius: 4px;
+      font-size: 0.9em;
+    }
+    .row.bot .bubble.md pre {
+      background: #f4f4f6;
+      padding: 10px 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 0.5em 0;
+      white-space: pre;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    .row.bot .bubble.md pre code {
+      background: none;
+      padding: 0;
+      font-size: 0.88em;
+      white-space: pre;
+      word-break: normal;
+      overflow-wrap: normal;
+    }
+    .row.bot .bubble.md h1,
+    .row.bot .bubble.md h2,
+    .row.bot .bubble.md h3 {
+      margin: 0.6em 0 0.35em;
+      font-weight: 700;
+      line-height: 1.25;
+    }
+    .row.bot .bubble.md h1 {
+      font-size: 1.25rem;
+    }
+    .row.bot .bubble.md h2 {
+      font-size: 1.1rem;
+    }
+    .row.bot .bubble.md h3 {
+      font-size: 1.02rem;
+    }
+    .row.bot .bubble.md blockquote {
+      margin: 0.5em 0;
+      padding-left: 0.85em;
+      border-left: 3px solid var(--user-box-border);
+      color: var(--muted);
+    }
+    .row.bot .bubble.md a {
+      color: var(--violet);
+    }
+    .composer-bar {
+      position: sticky;
+      bottom: 0;
+      width: var(--chat-col-width);
+      max-width: 100%;
+      margin: 0 auto;
+      padding: 12px var(--chat-pad) 20px;
+      background: var(--page);
+      border-top: 1px solid var(--border);
+      box-sizing: border-box;
+    }
+    .composer {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px 6px 16px;
+      background: var(--page);
+      border: 1px solid var(--user-box-border);
+      border-radius: 999px;
+    }
+    textarea {
+      flex: 1;
+      min-height: 38px;
+      max-height: 140px;
+      resize: none;
+      border: none;
+      background: transparent;
+      color: var(--text);
+      padding: 8px 4px;
+      font: inherit;
+      font-size: 0.95rem;
+      line-height: 1.45;
+    }
+    textarea:focus,
+    textarea:focus-visible {
+      outline: none;
+      box-shadow: none;
+    }
+    textarea::placeholder { color: var(--muted); opacity: 0.85; }
+    textarea:disabled { opacity: 0.45; }
+    .composer-action {
+      flex-shrink: 0;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      border: none;
+      background: linear-gradient(145deg, var(--mint-bright), var(--mint));
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(5, 150, 105, 0.25);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .composer-action:hover:not(:disabled) {
+      box-shadow: 0 4px 18px rgba(5, 150, 105, 0.32);
+    }
+    .composer-action:active:not(:disabled) { transform: scale(0.96); }
+    .composer-action:disabled {
+      opacity: 0.38;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+    .composer-action svg {
+      width: 20px;
+      height: 20px;
+    }
+    .composer-action .ic-stop {
+      display: none;
+      width: 18px;
+      height: 18px;
+    }
+    .composer-action.streaming {
+      background: linear-gradient(145deg, #f87171, #ef4444);
+      box-shadow: 0 2px 14px rgba(239, 68, 68, 0.35);
+    }
+    .composer-action.streaming:hover:not(:disabled) {
+      box-shadow: 0 4px 20px rgba(239, 68, 68, 0.42);
+    }
+    .composer-action.streaming .ic-send { display: none; }
+    .composer-action.streaming .ic-stop { display: block; }
+    .aside-foot {
+      padding: 12px 14px 18px;
+      border-top: 1px solid var(--sidebar-border);
+      margin-top: auto;
+    }
+    .btn-clear {
+      width: 100%;
+      padding: 10px 12px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--muted);
+      background: transparent;
+      border: 1px dashed var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-clear:hover {
+      color: #b91c1c;
+      border-color: rgba(185, 28, 28, 0.35);
+      background: #fef2f2;
+    }
+    .hidden { display: none !important; }
+    .btn-scroll-down {
+      position: fixed;
+      z-index: 25;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--user-box-border);
+      background: var(--page);
+      color: var(--violet);
+      box-shadow: 0 2px 16px rgba(0, 0, 0, 0.1);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      bottom: 96px;
+      left: 50%;
+      transform: translateX(-50%);
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+    }
+    body:not(.mode-empty) .btn-scroll-down {
+      left: calc(272px + (100vw - 272px) / 2);
+    }
+    .btn-scroll-down.visible {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+    }
+    .btn-scroll-down:hover {
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.2);
+    }
+    .btn-scroll-down svg {
+      width: 22px;
+      height: 22px;
+    }
+    .row.bot .bubble.md pre.hljs {
+      background: #f6f8fa;
+    }
+    .row.bot .bubble.md pre code.hljs {
+      background: transparent;
+      color: #24292e;
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github.min.css" />
+</head>
+<body>
+  <aside>
+    <div class="side-head">
+      <div class="logo">BitNet <span>local</span></div>
+    </div>
+    <button type="button" class="btn btn-new" id="btnNew">New chat</button>
+    <div class="history">
+      <div class="history-label">Conversations</div>
+      <div id="list"></div>
+    </div>
+    <div class="aside-foot">
+      <button type="button" class="btn-clear" id="btnClearAll">Clear all data</button>
+    </div>
+  </aside>
+  <main id="main">
+    <div id="landing">
+      <div class="landing-inner">
+        <h1>Chat on-device</h1>
+        <p>Start a thread, ask anything, and your history stays in this browser.</p>
+        <button type="button" class="btn btn-start" id="btnStart">Start chat</button>
+      </div>
+    </div>
+    <div id="chatShell">
+      <div class="thread" id="thread"></div>
+      <div class="composer-bar">
+        <div class="composer">
+          <textarea id="input" rows="1" placeholder="Message" disabled></textarea>
+          <button type="button" class="composer-action" id="actionBtn" disabled title="Send" aria-label="Send">
+            <svg class="ic-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/></svg>
+            <svg class="ic-stop" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <button type="button" class="btn-scroll-down" id="btnScrollDown" aria-label="Scroll to latest messages" title="Latest messages">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>
+    </button>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.9/dist/purify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+  <script>
+    const STORAGE = 'bitnet-chats-v1';
+    const SYSTEM = 'You are a helpful assistant';
+    const INPUT_PLACEHOLDER_MESSAGE = 'Message';
+    const INPUT_PLACEHOLDER_INIT = 'Initializing session, please wait...';
+    if (typeof marked !== 'undefined' && marked.setOptions) {
+      marked.setOptions({ breaks: false, gfm: true });
+    }
+    function stripAssistantDisplay(t) {
+      if (!t) return '';
+      let s = String(t);
+      for (;;) {
+        const n = s.replace(/^\s*>+\s*/, '');
+        if (n === s) break;
+        s = n;
+      }
+      for (;;) {
+        const n = s.replace(/(?:\r?\n)\s*>\s*(?:\r?\n)?$/g, '');
+        if (n === s) break;
+        s = n;
+      }
+      if (/^\s*>\s*$/.test(s.trim())) return '';
+      return s.trimEnd();
+    }
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s;
+      return d.innerHTML;
+    }
+    function normalizeMdForParse(s) {
+      if (!s) return '';
+      let t = s.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      t = t.replace(/(^|\n)```java\s*\n\s*script(?=\s*(?:\n|$))/gim, '$1```javascript\n');
+      t = t.replace(/(^|\n)```javascrip\s*\n\s*t\s*(?=\r?\n|$)/gim, '$1```javascript\n');
+      t = t.replace(/(^|\n)```typescrip\s*\n\s*t\s*(?=\r?\n|$)/gim, '$1```typescript\n');
+      const codeLike =
+        /^(console\.|let |const |var |import |export |from |async |await |function |class |interface |type |enum |def |fn |fun |pub |use |impl |struct |match |package |#include|void |int |public |private |protected |static |new |return |if |for |while |try |throw |switch |case |select |\{)/;
+      const prefixes = [
+        'javascript', 'typescript', 'python', 'powershell', 'dockerfile', 'plaintext', 'markdown',
+        'graphql', 'kotlin', 'swift', 'scala', 'rust', 'ruby', 'php', 'go', 'bash', 'shell',
+        'html', 'css', 'json', 'yaml', 'toml', 'sql', 'sass', 'scss', 'less', 'vue', 'svelte',
+        'docker', 'gradle', 'groovy', 'haskell', 'elixir', 'erlang', 'clojure', 'arduino', 'matlab',
+        'nginx', 'apache', 'diff', 'patch', 'ini', 'proto', 'zig', 'nim', 'dart', 'julia', 'ocaml',
+        'csharp', 'cpp', 'objc', 'objectivec', 'solidity', 'vhdl', 'verilog', 'tsx', 'jsx', 'cs',
+        'md', 'sh', 'ps1', 'rb', 'py', 'rs', 'kt', 'kts', 'ts', 'js', 'c', 'h', 'r',
+      ];
+      prefixes.sort(function (a, b) {
+        return b.length - a.length;
+      });
+      function splitRunOnFenceLang(lang) {
+        const lower = String(lang).toLowerCase();
+        for (let i = 0; i < prefixes.length; i++) {
+          const p = prefixes[i];
+          if (lang.length <= p.length || !lower.startsWith(p)) continue;
+          const rest = lang.slice(p.length);
+          if (p.length <= 2) {
+            if (!codeLike.test(rest)) continue;
+            if (/^[a-zA-Z_$]/.test(rest) || /^\[/.test(rest)) return lang.slice(0, p.length) + '\n' + rest;
+            continue;
+          }
+          if (
+            codeLike.test(rest) ||
+            /^([#\/'"\x60\(\[\{])/.test(rest) ||
+            /^\w+\s*=/.test(rest)
+          ) {
+            return lang.slice(0, p.length) + '\n' + rest;
+          }
+        }
+        return null;
+      }
+      t = t.replace(/(^|\n)```([\w+#.-]{3,80})/gm, function (full, pre, lang) {
+        const sp = splitRunOnFenceLang(lang);
+        return sp ? pre + '```' + sp : full;
+      });
+      return t;
+    }
+    function highlightCodeInHtml(html) {
+      if (!html || typeof hljs === 'undefined') return html;
+      const wrap = document.createElement('div');
+      wrap.innerHTML = html;
+      wrap.querySelectorAll('pre code').forEach(function (el) {
+        if (el.closest('pre') && !el.classList.contains('hljs')) {
+          try {
+            hljs.highlightElement(el);
+          } catch (e) {}
+        }
+      });
+      return wrap.innerHTML;
+    }
+    function markdownToSafeHtml(text) {
+      if (!text) return '';
+      try {
+        if (typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+          const html = marked.parse(text);
+          let out = html;
+          if (typeof DOMPurify !== 'undefined' && typeof DOMPurify.sanitize === 'function') {
+            out = DOMPurify.sanitize(html, {
+              ADD_ATTR: ['class'],
+              ADD_TAGS: ['span'],
+            });
+          }
+          return highlightCodeInHtml(out);
+        }
+      } catch (e) {}
+      return escapeHtml(text).replace(/\n/g, '<br>');
+    }
+    function renderAssistantHtml(raw) {
+      const text = normalizeMdForParse(stripAssistantDisplay(String(raw || '')));
+      return markdownToSafeHtml(text);
+    }
+    let state = { chats: [], activeId: null };
+    let streamAbort = null;
+    let streaming = false;
+
+    const body = document.body;
+    const mainEl = document.getElementById('main');
+    const landing = document.getElementById('landing');
+    const chatShell = document.getElementById('chatShell');
+    const thread = document.getElementById('thread');
+    const input = document.getElementById('input');
+    const actionBtn = document.getElementById('actionBtn');
+    const list = document.getElementById('list');
+    const btnNew = document.getElementById('btnNew');
+    const btnStart = document.getElementById('btnStart');
+    const btnClearAll = document.getElementById('btnClearAll');
+    const btnScrollDown = document.getElementById('btnScrollDown');
+    let streamingSessionId = null;
+    const SCROLL_PIN_PX = 100;
+    const SCROLL_DOWN_MIN_GAP = 56;
+    function mainBottomGap() {
+      if (!mainEl) return 0;
+      return mainEl.scrollHeight - mainEl.scrollTop - mainEl.clientHeight;
+    }
+    function isMainNearBottom() {
+      return mainBottomGap() <= SCROLL_PIN_PX;
+    }
+    function scrollMainToBottom(options) {
+      const opt = options || {};
+      const smooth = opt.smooth === true;
+      if (mainEl) {
+        const top = mainEl.scrollHeight;
+        if (smooth) {
+          try {
+            mainEl.scrollTo({ top: top, behavior: 'smooth' });
+          } catch (e) {
+            mainEl.scrollTop = top;
+          }
+        } else {
+          mainEl.scrollTop = top;
+        }
+      }
+      updateScrollDownHint();
+    }
+    function scrollMainIfPinned() {
+      if (isMainNearBottom()) scrollMainToBottom();
+      else updateScrollDownHint();
+    }
+    function updateScrollDownHint() {
+      if (!btnScrollDown || !mainEl || !chatShell) return;
+      if (!chatShell.classList.contains('open') || state.chats.length === 0) {
+        btnScrollDown.classList.remove('visible');
+        return;
+      }
+      const gap = mainBottomGap();
+      btnScrollDown.classList.toggle('visible', gap > SCROLL_DOWN_MIN_GAP);
+    }
+
+    function stopPayload(obj) {
+      return fetch('/stop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(obj || {}),
+      }).catch(function () {});
+    }
+
+    function load() {
+      try {
+        const raw = localStorage.getItem(STORAGE);
+        if (raw) state = JSON.parse(raw);
+      } catch (e) {
+        state = { chats: [], activeId: null };
+      }
+      if (!Array.isArray(state.chats)) state.chats = [];
+      state.chats.forEach((ch) => {
+        if (!Array.isArray(ch.messages)) ch.messages = [];
+        delete ch.cnvReady;
+      });
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE, JSON.stringify(state));
+    }
+
+    function activeChat() {
+      return state.chats.find((c) => c.id === state.activeId) || null;
+    }
+
+    function renderList() {
+      list.innerHTML = '';
+      const sorted = [...state.chats].sort((a, b) => (b.updated || 0) - (a.updated || 0));
+      sorted.forEach((c) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chat-item' + (c.id === state.activeId ? ' active' : '');
+        b.textContent = c.title || 'Chat';
+        b.onclick = () => selectChat(c.id);
+        list.appendChild(b);
+      });
+    }
+
+    function titleFromMessages(msgs) {
+      const u = msgs.filter((m) => m.role === 'user').pop();
+      if (!u) return 'New chat';
+      const t = u.content.trim().slice(0, 48);
+      return t || 'New chat';
+    }
+
+    function syncActionButton() {
+      if (streaming) {
+        actionBtn.classList.add('streaming');
+        actionBtn.disabled = false;
+        actionBtn.title = 'Stop';
+        actionBtn.setAttribute('aria-label', 'Stop');
+        return;
+      }
+      actionBtn.classList.remove('streaming');
+      actionBtn.title = 'Send';
+      actionBtn.setAttribute('aria-label', 'Send');
+      actionBtn.disabled = !input.value.trim();
+    }
+
+    function applyLayout() {
+      const empty = state.chats.length === 0;
+      body.classList.toggle('mode-empty', empty);
+      if (empty) {
+        landing.classList.remove('hidden');
+        chatShell.classList.remove('open');
+        input.disabled = true;
+        input.placeholder = INPUT_PLACEHOLDER_MESSAGE;
+        actionBtn.classList.remove('streaming');
+        actionBtn.disabled = true;
+        updateScrollDownHint();
+        return;
+      }
+      landing.classList.add('hidden');
+      chatShell.classList.add('open');
+      input.disabled = false;
+      input.placeholder = INPUT_PLACEHOLDER_MESSAGE;
+      syncActionButton();
+      updateScrollDownHint();
+    }
+
+    function renderThread(options) {
+      const opt = options || {};
+      const forceBottom = opt.forceBottom === true;
+      let pin = forceBottom;
+      if (!pin && mainEl && chatShell.classList.contains('open')) {
+        pin = isMainNearBottom();
+      }
+      thread.innerHTML = '';
+      const c = activeChat();
+      if (!c) {
+        updateScrollDownHint();
+        return;
+      }
+      c.messages.forEach((m) => {
+        if (m.role === 'system') return;
+        const row = document.createElement('div');
+        row.className = 'row ' + (m.role === 'user' ? 'user' : 'bot');
+        const bubble = document.createElement('div');
+        bubble.className = 'bubble' + (m.role === 'assistant' ? ' md' : '');
+        if (m.role === 'assistant') {
+          bubble.innerHTML = renderAssistantHtml(m.content);
+        } else {
+          bubble.textContent = m.content;
+        }
+        row.appendChild(bubble);
+        thread.appendChild(row);
+      });
+      if (pin) scrollMainToBottom();
+      else updateScrollDownHint();
+    }
+
+    async function beginChat() {
+      if (streaming) {
+        streamAbort.abort();
+        if (streamingSessionId) stopPayload({ session_id: streamingSessionId });
+        streaming = false;
+        streamAbort = null;
+        streamingSessionId = null;
+      }
+      const id = crypto.randomUUID();
+      const now = Date.now();
+      const chat = {
+        id,
+        title: 'New chat',
+        created: now,
+        updated: now,
+        messages: [{ role: 'system', content: SYSTEM }],
+      };
+      state.chats.unshift(chat);
+      state.activeId = id;
+      save();
+      renderList();
+      applyLayout();
+      renderThread({ forceBottom: true });
+      input.disabled = true;
+      input.placeholder = INPUT_PLACEHOLDER_INIT;
+      actionBtn.disabled = true;
+      try {
+        const res = await fetch('/cnv/init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: id, system: SYSTEM }),
+        });
+        if (!res.ok) throw new Error(String(res.status));
+        chat.cnvReady = true;
+        save();
+      } catch (e) {
+        input.placeholder = INPUT_PLACEHOLDER_MESSAGE;
+        state.chats = state.chats.filter((x) => x.id !== id);
+        const sorted = [...state.chats].sort((a, b) => (b.updated || 0) - (a.updated || 0));
+        state.activeId = sorted[0] ? sorted[0].id : null;
+        save();
+        renderList();
+        applyLayout();
+        if (state.chats.length) renderThread({ forceBottom: true });
+        return;
+      }
+      input.placeholder = INPUT_PLACEHOLDER_MESSAGE;
+      input.disabled = false;
+      syncActionButton();
+      input.focus();
+    }
+
+    function selectChat(id) {
+      if (id === state.activeId) {
+        renderThread();
+        input.placeholder = INPUT_PLACEHOLDER_MESSAGE;
+        syncActionButton();
+        input.focus();
+        return;
+      }
+      if (streaming) {
+        streamAbort.abort();
+        if (streamingSessionId) stopPayload({ session_id: streamingSessionId });
+        streaming = false;
+        streamAbort = null;
+        streamingSessionId = null;
+      }
+      state.activeId = id;
+      save();
+      renderList();
+      applyLayout();
+      renderThread({ forceBottom: true });
+      input.disabled = false;
+      input.placeholder = INPUT_PLACEHOLDER_MESSAGE;
+      syncActionButton();
+      input.focus();
+    }
+
+    function systemContentForChat(c) {
+      const s = c.messages.find((m) => m.role === 'system');
+      return (s && s.content) || SYSTEM;
+    }
+
+    async function ensureCnv(c) {
+      if (c.cnvReady) return true;
+      const res = await fetch('/cnv/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: c.id, system: systemContentForChat(c) }),
+      });
+      if (!res.ok) return false;
+      c.cnvReady = true;
+      save();
+      return true;
+    }
+
+    async function runCnvStream(c, text) {
+      if (!c) return;
+      streamAbort = new AbortController();
+      streaming = true;
+      streamingSessionId = c.id;
+      syncActionButton();
+
+      const row = document.createElement('div');
+      row.className = 'row bot';
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble md';
+      row.appendChild(bubble);
+      thread.appendChild(row);
+      scrollMainToBottom();
+
+      let streamPlain = '';
+      let buf = '';
+      const dec = new TextDecoder();
+      let resOk = false;
+      let resFailed = false;
+      try {
+        let res = await fetch('/cnv/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ session_id: c.id, text: text }),
+          signal: streamAbort.signal,
+        });
+        if (res.status === 409) {
+          c.cnvReady = false;
+          save();
+          if (await ensureCnv(c)) {
+            res = await fetch('/cnv/send', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ session_id: c.id, text: text }),
+              signal: streamAbort.signal,
+            });
+          }
+        }
+        if (!res.ok) {
+          bubble.className = 'bubble';
+          bubble.textContent = '[request failed]';
+          resFailed = true;
+        } else {
+          resOk = true;
+          const reader = res.body.getReader();
+          read: for (;;) {
+            const { done, value } = await reader.read();
+            if (done) break read;
+            buf += dec.decode(value, { stream: true });
+            for (;;) {
+              const i = buf.indexOf('\n\n');
+              if (i < 0) break;
+              const block = buf.slice(0, i);
+              buf = buf.slice(i + 2);
+              if (!block.startsWith('data: ')) continue;
+              let payload;
+              try {
+                payload = JSON.parse(block.slice(6));
+              } catch (e) {
+                continue;
+              }
+              if (payload.done) {
+                streaming = false;
+                streamAbort = null;
+                streamingSessionId = null;
+                syncActionButton();
+                break read;
+              }
+              if (payload.text) {
+                streamPlain += payload.text;
+                bubble.className = 'bubble md';
+                bubble.innerHTML = renderAssistantHtml(streamPlain);
+                scrollMainIfPinned();
+              }
+            }
+          }
+          try {
+            await reader.cancel();
+          } catch (e) {}
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          bubble.className = 'bubble';
+          bubble.textContent = (streamPlain ? stripAssistantDisplay(streamPlain) + '\n' : '') + '[error]';
+        }
+      } finally {
+        streaming = false;
+        streamAbort = null;
+        streamingSessionId = null;
+        syncActionButton();
+        const last = c.messages[c.messages.length - 1];
+        if (last && last.role === 'user') {
+          if (resFailed) {
+            c.messages.push({ role: 'assistant', content: '[request failed]' });
+          } else if (resOk) {
+            c.messages.push({
+              role: 'assistant',
+              content: stripAssistantDisplay(streamPlain || ''),
+            });
+          }
+          c.title = titleFromMessages(c.messages);
+          c.updated = Date.now();
+          save();
+          renderList();
+        }
+        if (state.activeId === c.id) renderThread();
+        input.focus();
+      }
+    }
+
+    async function onSend() {
+      const text = input.value.trim();
+      if (!text || streaming) return;
+      const c = activeChat();
+      if (!c) return;
+      input.value = '';
+      c.messages.push({ role: 'user', content: text });
+      c.title = titleFromMessages(c.messages);
+      c.updated = Date.now();
+      save();
+      renderList();
+      renderThread({ forceBottom: true });
+      if (!(await ensureCnv(c))) {
+        c.messages.pop();
+        save();
+        renderThread();
+        input.value = text;
+        syncActionButton();
+        return;
+      }
+      runCnvStream(c, text);
+    }
+
+    function onActionClick() {
+      if (streaming) {
+        if (streamAbort) streamAbort.abort();
+        const sid = streamingSessionId;
+        if (sid) stopPayload({ session_id: sid });
+        const ch = state.chats.find((x) => x.id === sid);
+        if (ch) {
+          ch.cnvReady = false;
+          save();
+        }
+        return;
+      }
+      onSend();
+    }
+
+    function clearAllHistory() {
+      if (!confirm('Remove every saved chat from this browser and stop all model sessions?')) return;
+      if (streamAbort) streamAbort.abort();
+      stopPayload({ all: true });
+      streaming = false;
+      streamAbort = null;
+      streamingSessionId = null;
+      localStorage.removeItem(STORAGE);
+      state = { chats: [], activeId: null };
+      renderList();
+      applyLayout();
+      syncActionButton();
+    }
+
+    btnStart.onclick = function () {
+      beginChat();
+    };
+    btnNew.onclick = function () {
+      beginChat();
+    };
+    btnClearAll.onclick = clearAllHistory;
+    actionBtn.onclick = onActionClick;
+    input.addEventListener('input', syncActionButton);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        onSend();
+      }
+    });
+
+    load();
+    if (state.activeId && !activeChat()) state.activeId = null;
+    if (!state.activeId && state.chats.length) {
+      const sorted = [...state.chats].sort((a, b) => (b.updated || 0) - (a.updated || 0));
+      state.activeId = sorted[0].id;
+      save();
+    }
+    renderList();
+    if (state.chats.length === 0) {
+      applyLayout();
+    } else {
+      applyLayout();
+      renderThread({ forceBottom: true });
+      input.disabled = false;
+      syncActionButton();
+    }
+    updateScrollDownHint();
+
+    if (mainEl) mainEl.addEventListener('scroll', updateScrollDownHint, { passive: true });
+    if (typeof ResizeObserver !== 'undefined' && thread) {
+      new ResizeObserver(function () {
+        updateScrollDownHint();
+      }).observe(thread);
+    }
+    window.addEventListener('resize', updateScrollDownHint);
+    if (btnScrollDown) {
+      btnScrollDown.onclick = function () {
+        scrollMainToBottom({ smooth: true });
+      };
+    }
+  </script>
+</body>
+</html>
