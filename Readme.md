@@ -10,13 +10,12 @@ Run a small BitNet model on local machine with one Docker command, and chat in b
 
 ## Features
 
-- Build and start the LLM server with a single command.
-- Web interface to chat with the LLM. Start conversation and put follow-up prompts.
-- Chat history is stored in browser storage. You get all the chats even if you reload the page or comes back later. It stays in storage unless it is cleared manually.
-- A single button to clear all the chats from browser storage.
-- LLM remebers the context so you can make follow-up questions it will answer efficiently.
-- Responses are streamed from server so you word by word written on page from LLM.
-- Runs on any machine with a single docker command.
+- Start the LLM server with a single command
+- Web UI to chat and continue conversations
+- Chat history saved in browser (persists on reload)
+- One-click option to clear chats
+- Context-aware responses for better follow-ups
+- Streaming output (see responses word by word in real-time)
 
 ## Working example
 

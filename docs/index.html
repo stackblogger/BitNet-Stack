@@ -6,7 +6,7 @@
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-3BLBKB5Z8M"></script>
   <script>
     window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
+    function gtag() { dataLayer.push(arguments); }
     gtag('js', new Date());
 
     gtag('config', 'G-3BLBKB5Z8M');
@@ -475,11 +475,8 @@
   </header>
   <main id="main-content">
     <h2>What is BitNet-Stack?</h2>
-    <p>BitNet-Stack is a small stack for running BitNet inference model on local machine. You use Docker so you do not
-      install Python or Node on your computer by hand. The container pulls a ready-made model file, starts a server, and
-      you
-      open a web page to talk to the model. Code and issues live on <a
-        href="https://github.com/stackblogger/BitNet-Stack">GitHub</a>.</p>
+    <p>BitNet-Stack is a small stack to run BitNet inference model on your local machine. It provides an easy to use web
+      UI to chat with the model.</p>
     <p>The model is a compact BitNet GGUF build suited for local use. The server streams answers so you see text appear
       as it is written, not only after the full reply is done.</p>
 
@@ -506,8 +503,8 @@
           start.</p>
       </div>
     </div>
-    <p>Other useful feature: one <code>docker compose</code> command to build and run, no manual weight downloads on the
-      host, and a layout that works on laptop or small server.</p>
+    <p>Other useful feature: one <code>docker compose</code> command to build and run, no manual complex setup required.
+    </p>
 
     <h2>How it fits together</h2>
     <p>Docker runs one service that holds the model and the web server. The static page talks to that service. History
